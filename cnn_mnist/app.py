@@ -1,11 +1,25 @@
 import streamlit as st
 import numpy as np
-import cv2
-
+from PIL import Image
+from pathlib import Path
 from tensorflow.keras.models import load_model
 
-# Load model
-model = load_model("models/cnn_model.h5")
+# =========================
+# Path Setup
+# =========================
+
+BASE_DIR = Path(__file__).parent
+MODEL_PATH = BASE_DIR / "models" / "cnn_model.h5"
+
+# =========================
+# Load Model
+# =========================
+
+model = load_model(MODEL_PATH)
+
+# =========================
+# Streamlit UI
+# =========================
 
 st.set_page_config(page_title="Digit Recognition")
 
@@ -18,29 +32,21 @@ uploaded = st.file_uploader(
 
 if uploaded is not None:
 
-    # Read image
-    file_bytes = np.asarray(
-        bytearray(uploaded.read()),
-        dtype=np.uint8
-    )
-
-    img = cv2.imdecode(
-        file_bytes,
-        cv2.IMREAD_GRAYSCALE
-    )
+    # Open with Pillow
+    img = Image.open(uploaded).convert("L")
 
     st.subheader("Uploaded Image")
     st.image(img, width=200)
 
     # Preprocess
-    resized = cv2.resize(img, (28, 28))
+    img_resized = img.resize((28, 28))
 
-    resized = resized.astype("float32") / 255.0
+    img_array = np.array(img_resized).astype("float32") / 255.0
 
-    resized = resized.reshape(1, 28, 28, 1)
+    img_array = img_array.reshape(1, 28, 28, 1)
 
     # Prediction
-    prediction = model.predict(resized, verbose=0)
+    prediction = model.predict(img_array, verbose=0)
 
     predicted_digit = np.argmax(prediction)
 
@@ -60,7 +66,7 @@ if uploaded is not None:
 
     for digit, prob in enumerate(probabilities):
         st.write(
-            f"Digit {digit}: {prob*100:.2f}%"
+            f"Digit {digit}: {prob * 100:.2f}%"
         )
 
     st.bar_chart(probabilities)
